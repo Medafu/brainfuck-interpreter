@@ -6,7 +6,6 @@ use std::io::Read;
 
 struct Source {
     source_code: Vec<u8>,
-    source_len: usize,
     char_pointer: usize,
 }
 
@@ -22,7 +21,31 @@ impl Source {
     }
 }
 
-fn main() {
+struct Tape {
+    source: Source,
+    tape: Box<[u8; 30000]>, 
+    tape_ptr: usize,
+}
+
+impl Tape {
+    fn shift_right(&mut self) {
+        self.tape_ptr += 1;
+    }
+
+    fn shift_left(&mut self) {
+        self.tape_ptr -= 1;
+    }
+
+    fn plus(&mut self) {
+        self.tape[self.tape_ptr] = self.tape[self.tape_ptr].wrapping_add(1);
+    }
+
+    fn minus(&mut self) {
+        self.tape[self.tape_ptr] = self.tape[self.tape_ptr].wrapping_sub(1);
+    }
+}
+
+fn read_file() -> Vec<u8> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         eprintln!("No arguments provided.");
@@ -49,19 +72,37 @@ fn main() {
         Ok(_) => ()
     }
 
-    let ascii_source: Vec<u8> = source_text.into_bytes();
+    return source_text.into_bytes()
+}
 
-    let mut source = Source {
-        source_len: ascii_source.len(),
+fn main() {
+
+    let ascii_source: Vec<u8> = read_file();
+
+    let source = Source {
         source_code: ascii_source,
         char_pointer: 0
     };
 
+    let mut tape = Tape{
+        source: source,
+        tape: Box::new([0; 30000]),
+        tape_ptr: 0,
+    };
 
-    while source.peek() != None {
-        match source.read() {
+    while tape.source.peek() != None {
+        match tape.source.read() {
             Some(b'+') => {
-                println!("Plus!")
+                tape.plus();
+            },
+            Some(b'-') => {
+                tape.minus();
+            },
+            Some(b'>') => {
+                tape.shift_right();
+            },
+            Some(b'<') => {
+                tape.shift_left();
             },
             Some(_) => (),
             None => println!("None.")
