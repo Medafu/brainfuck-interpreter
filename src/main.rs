@@ -3,6 +3,7 @@ use std::path::Path;
 use std::env;
 use std::process;
 use std::io::Read;
+use std::io;
 
 struct Source {
     source_code: Vec<u8>,
@@ -42,6 +43,31 @@ impl Tape {
 
     fn minus(&mut self) {
         self.tape[self.tape_ptr] = self.tape[self.tape_ptr].wrapping_sub(1);
+    }
+
+    fn comma(&mut self) {
+        let mut input = String::new();
+        let stdin = io::stdin();
+        match stdin.read_line(&mut input) {
+            Ok(_) => (),
+            Err(err) => {
+                eprintln!("Error reading user input. Error: {}", err);
+                process::exit(10);
+            } 
+        }
+
+        if !input.is_ascii() {
+            eprintln!("Input text should be in ascii format.");
+            process::exit(11);
+        }
+
+        match input.as_bytes().get(0) {
+            Some(c) => self.tape[self.tape_ptr] = *c,
+            None => {
+                eprintln!("No input detected.");
+                process::exit(12);
+            }
+        }
     }
 }
 
@@ -92,18 +118,12 @@ fn main() {
 
     while tape.source.peek() != None {
         match tape.source.read() {
-            Some(b'+') => {
-                tape.plus();
-            },
-            Some(b'-') => {
-                tape.minus();
-            },
-            Some(b'>') => {
-                tape.shift_right();
-            },
-            Some(b'<') => {
-                tape.shift_left();
-            },
+            Some(b'+') => tape.plus(),
+            Some(b'-') => tape.minus(),
+            Some(b'>') => tape.shift_right(),
+            Some(b'<') => tape.shift_left(),
+            Some(b'.') => print!("{}", tape.tape[tape.tape_ptr] as char),
+            Some(b',') => tape.comma(),
             Some(_) => (),
             None => println!("None.")
         }
