@@ -26,6 +26,7 @@ struct Tape {
     source: Source,
     tape: Box<[u8; 30000]>, 
     tape_ptr: usize,
+    loop_stack: Vec<usize>
 }
 
 impl Tape {
@@ -66,6 +67,46 @@ impl Tape {
             None => {
                 eprintln!("No input detected.");
                 process::exit(12);
+            }
+        }
+    }
+
+    fn loop_begin(&mut self) {
+        if self.tape[self.tape_ptr] != 0 {
+            self.loop_stack.push(self.source.char_pointer);
+            return;
+        }
+
+        loop {
+            match self.source.read() {
+                Some(b']') => {
+                    //println!("found loop end inside loop_begin function");
+                    return;
+                },
+                Some(b'[') => {
+                    self.loop_begin();
+                }
+                Some(_) => (),
+                None => {
+                    eprintln!("Couldn't find the loop end character.");
+                    process::exit(20);
+                }
+            }
+        }
+    }
+    
+    fn loop_end(&mut self) {
+        //println!("loop_end call");
+        if self.tape[self.tape_ptr] == 0 && !self.loop_stack.is_empty() {
+            self.loop_stack.pop();
+            return;
+        }
+
+        match self.loop_stack.last() {
+            Some(i) => self.source.char_pointer = *i,
+            None => {
+                eprintln!("Found \"]\" character, but the loop didn't start.");
+                process::exit(21);
             }
         }
     }
@@ -114,6 +155,7 @@ fn main() {
         source: source,
         tape: Box::new([0; 30000]),
         tape_ptr: 0,
+        loop_stack: Vec::new(),
     };
 
     while tape.source.peek() != None {
@@ -124,6 +166,8 @@ fn main() {
             Some(b'<') => tape.shift_left(),
             Some(b'.') => print!("{}", tape.tape[tape.tape_ptr] as char),
             Some(b',') => tape.comma(),
+            Some(b'[') => tape.loop_begin(),
+            Some(b']') => tape.loop_end(),
             Some(_) => (),
             None => println!("None.")
         }
